@@ -31,9 +31,10 @@ def reset_tables() -> None:
         )
 
 
-def write_dataframe(table_name: str, dataframe: pd.DataFrame) -> None:
+def write_dataframe(table_name: str, dataframe: pd.DataFrame) -> int:
     engine = get_engine()
     dataframe.to_sql(table_name, con=engine, schema="dw", if_exists="append", index=False, chunksize=500)
+    return len(dataframe)
 
 
 def _load_key_map(table_name: str, natural_key: str, surrogate_key: str) -> pd.Series:
@@ -46,23 +47,23 @@ def _load_key_map(table_name: str, natural_key: str, surrogate_key: str) -> pd.S
     return mapping.set_index(natural_key)[surrogate_key]
 
 
-def load_dim_date(dim_date: pd.DataFrame) -> None:
-    write_dataframe("dim_date", dim_date)
+def load_dim_date(dim_date: pd.DataFrame) -> int:
+    return write_dataframe("dim_date", dim_date)
 
 
-def load_dim_customer(dim_customer: pd.DataFrame) -> None:
-    write_dataframe("dim_customer", dim_customer)
+def load_dim_customer(dim_customer: pd.DataFrame) -> int:
+    return write_dataframe("dim_customer", dim_customer)
 
 
-def load_dim_product(dim_product: pd.DataFrame) -> None:
-    write_dataframe("dim_product", dim_product)
+def load_dim_product(dim_product: pd.DataFrame) -> int:
+    return write_dataframe("dim_product", dim_product)
 
 
-def load_dim_seller(dim_seller: pd.DataFrame) -> None:
-    write_dataframe("dim_seller", dim_seller)
+def load_dim_seller(dim_seller: pd.DataFrame) -> int:
+    return write_dataframe("dim_seller", dim_seller)
 
 
-def load_fact_sales(fact_sales: pd.DataFrame) -> None:
+def load_fact_sales(fact_sales: pd.DataFrame) -> int:
     purchase_date = pd.to_datetime(fact_sales["order_purchase_timestamp"], errors="coerce").dt.date
     approved_date = pd.to_datetime(fact_sales["order_approved_at"], errors="coerce").dt.date
     shipped_date = pd.to_datetime(fact_sales["order_delivered_carrier_date"], errors="coerce").dt.date
@@ -106,4 +107,4 @@ def load_fact_sales(fact_sales: pd.DataFrame) -> None:
     if missing_key_columns:
         raise ValueError(f"Unable to resolve surrogate keys for columns: {', '.join(missing_key_columns)}")
 
-    write_dataframe("fact_sales", fact_ready)
+    return write_dataframe("fact_sales", fact_ready)
