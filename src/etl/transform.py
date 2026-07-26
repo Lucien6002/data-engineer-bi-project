@@ -10,13 +10,33 @@ def _to_date_series(series: pd.Series) -> pd.Series:
 
 
 def build_dim_date(date_sources: Iterable[pd.Series]) -> pd.DataFrame:
-    dates = pd.Series(dtype="object")
+    date_series = []
     for source in date_sources:
-        current_dates = _to_date_series(source).dropna()
-        dates = pd.concat([dates, current_dates], ignore_index=True)
+        current_dates = pd.to_datetime(source, errors="coerce").dropna().dt.normalize()
+        if not current_dates.empty:
+            date_series.append(current_dates)
 
-    dim_date = pd.DataFrame({"full_date": pd.Series(dates.drop_duplicates()).sort_values()})
-    dim_date["date_key"] = pd.to_datetime(dim_date["full_date"]).dt.strftime("%Y%m%d").astype(int)
+    if not date_series:
+        return pd.DataFrame(
+            columns=[
+                "date_key",
+                "full_date",
+                "day_of_month",
+                "day_name",
+                "day_of_week",
+                "week_of_year",
+                "month_number",
+                "month_name",
+                "quarter_number",
+                "year_number",
+                "is_weekend",
+            ]
+        ).copy()
+
+    all_dates = pd.concat(date_series, ignore_index=True).drop_duplicates().sort_values()
+    calendar = pd.date_range(start=all_dates.min(), end=all_dates.max(), freq="D")
+    dim_date = pd.DataFrame({"full_date": calendar.date})
+    dim_date["date_key"] = pd.Series(calendar).dt.strftime("%Y%m%d").astype(int)
 
     full_datetime = pd.to_datetime(dim_date["full_date"])
     dim_date["day_of_month"] = full_datetime.dt.day.astype(int)
